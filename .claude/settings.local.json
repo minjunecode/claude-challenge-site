@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "WebSearch",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(gh repo:*)",
+      "Bash(where gh:*)",
+      "Bash(winget list:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:codelynx.dev)",
+      "Bash(mkdir -p \"C:/Users/kmjms/claude-challenge-auto/.claude\")",
+      "Read(//c/Users/kmjms/**)",
+      "Bash(dir \"%USERPROFILE%\\\\.claude\"\" 2>nul && echo \"---\" && dir \"%USERPROFILE%.claude*credentials*\" 2>nul || echo \"credentials 파일 없음 \")"
+    ]
+  }
+}

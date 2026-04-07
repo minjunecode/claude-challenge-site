@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "challenge-site",
+      "runtimeExecutable": "npx",
+      "cwd": "C:/Users/kmjms/claude-challenge-site",
+      "runtimeArgs": ["http-server", ".", "-p", "8080", "-c-1"],
+      "port": 8080
+    }
+  ]
+}

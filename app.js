@@ -411,7 +411,8 @@ function renderDailyTable(members, submissions, currentWeek, currentYear) {
   days.forEach(d => {
     const th = document.createElement('th');
     if (d.date === today) {
-      th.innerHTML = `${d.month}/${d.dayNum}(${d.label})<br><span style="font-size:0.65rem;">오늘</span>`;
+      th.textContent = `${d.month}/${d.dayNum}(${d.label})`;
+      th.title = '오늘';
       th.classList.add('daily-th-today');
     } else {
       th.textContent = `${d.month}/${d.dayNum}(${d.label})`;
