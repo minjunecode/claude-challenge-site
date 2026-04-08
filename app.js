@@ -381,8 +381,6 @@ function getWeekDates(week, year) {
 }
 
 function renderDailyTable(members, submissions) {
-  console.log('[DEBUG] renderDailyTable called, members:', members?.length, 'submissions:', submissions?.length);
-  try {
   const today = getTodayStr();
   const now = new Date();
   const dayOfWeek = now.getDay() || 7;
@@ -418,7 +416,7 @@ function renderDailyTable(members, submissions) {
     if (s.type === 'session') {
       const dateStr = normalizeDate(s.submittedAt);
       if (dateStr && dailyMap[s.nickname]) {
-        if (!dailyMap[s.nickname][dateStr]) dailyMap[s.nickname][dateStr] = { done: true, tokens: 0, source: s.source };
+        if (!dailyMap[s.nickname][dateStr]) dailyMap[s.nickname][dateStr] = { done: true, tokens: 0, allTokens: 0, source: s.source };
         dailyMap[s.nickname][dateStr].done = true;
         if (s.source === 'auto' && s.tokens) dailyMap[s.nickname][dateStr].tokens = s.tokens;
       }
@@ -510,19 +508,13 @@ function renderDailyTable(members, submissions) {
         }
       }
       if (tokens > 0) {
-        const all = info ? info.allTokens : 0;
-        td.title = `in+out: ${tokens.toLocaleString()}\ncache 포함: ${all.toLocaleString()}`;
+        const all = (info && info.allTokens) ? info.allTokens : 0;
+        td.title = `가중 스코어: ${tokens.toLocaleString()}`;
       }
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
-  console.log('[DEBUG] renderDailyTable done, tbody children:', tbody.children.length, 'tbody.innerHTML length:', tbody.innerHTML.length);
-  } catch(e) {
-    console.error('[DEBUG] renderDailyTable ERROR:', e);
-    const tbody = document.getElementById('daily-body');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="color:red;padding:20px;">렌더링 오류: ' + e.message + '</td></tr>';
-  }
 }
 
 function showColorPicker(dot, nickname) {
@@ -648,9 +640,8 @@ function getStreak(nickname, submissions, currentWeek, currentYear) {
 }
 
 function renderDashboard() {
-  if (!dashboardData) { console.log('[DEBUG] renderDashboard: no data, return'); return; }
+  if (!dashboardData) return;
   const { members, submissions } = dashboardData;
-  console.log('[DEBUG] renderDashboard: members=', JSON.stringify(members?.map(m=>m.nickname)), 'submissions=', submissions?.length, 'usage=', dashboardData.usage?.length);
   const currentWeek = getISOWeek(new Date());
   const currentYear = new Date().getFullYear();
 
