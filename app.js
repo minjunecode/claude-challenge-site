@@ -381,6 +381,8 @@ function getWeekDates(week, year) {
 }
 
 function renderDailyTable(members, submissions) {
+  console.log('[DEBUG] renderDailyTable called, members:', members?.length, 'submissions:', submissions?.length);
+  try {
   const today = getTodayStr();
   const now = new Date();
   const dayOfWeek = now.getDay() || 7;
@@ -515,6 +517,12 @@ function renderDailyTable(members, submissions) {
     });
     tbody.appendChild(tr);
   });
+  console.log('[DEBUG] renderDailyTable done, tbody children:', tbody.children.length, 'tbody.innerHTML length:', tbody.innerHTML.length);
+  } catch(e) {
+    console.error('[DEBUG] renderDailyTable ERROR:', e);
+    const tbody = document.getElementById('daily-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="color:red;padding:20px;">렌더링 오류: ' + e.message + '</td></tr>';
+  }
 }
 
 function showColorPicker(dot, nickname) {
@@ -640,8 +648,9 @@ function getStreak(nickname, submissions, currentWeek, currentYear) {
 }
 
 function renderDashboard() {
-  if (!dashboardData) return;
+  if (!dashboardData) { console.log('[DEBUG] renderDashboard: no data, return'); return; }
   const { members, submissions } = dashboardData;
+  console.log('[DEBUG] renderDashboard: members=', JSON.stringify(members?.map(m=>m.nickname)), 'submissions=', submissions?.length, 'usage=', dashboardData.usage?.length);
   const currentWeek = getISOWeek(new Date());
   const currentYear = new Date().getFullYear();
 
