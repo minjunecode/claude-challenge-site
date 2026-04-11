@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자동 리포팅 설정 가이드</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Pretendard Variable', -apple-system, sans-serif;
+      background: #08080a; color: #e4e4e7;
+      line-height: 1.7; -webkit-font-smoothing: antialiased;
+      padding: 32px 24px 80px;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; }
+
+    h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.02em; }
+    .sub { color: #71717a; font-size: 13px; margin-bottom: 28px; }
+
+    h2 {
+      font-size: 12px; font-weight: 700; color: #71717a;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 12px; padding-bottom: 6px;
+      border-bottom: 1px solid #1e1e24;
+    }
+    section { margin-bottom: 28px; }
+
+    /* Flow */
+    .flow {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 6px; flex-wrap: wrap;
+    }
+    .flow-node {
+      padding: 8px 14px; background: #111114; border: 1px solid #1e1e24;
+      border-radius: 8px; font-size: 13px; font-weight: 600; white-space: nowrap;
+    }
+    .flow-node.hl { border-color: #34d399; color: #34d399; }
+    .flow-arr { color: #3f3f46; font-size: 16px; }
+    .note { color: #52525b; font-size: 12px; }
+
+    /* OS Tabs */
+    .os-tabs {
+      display: flex; gap: 0; margin-bottom: 16px;
+      border-bottom: 2px solid #1e1e24;
+    }
+    .os-tab {
+      padding: 8px 20px; font-size: 14px; font-weight: 600;
+      color: #52525b; cursor: pointer; border: none; background: none;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .os-tab.active { color: #e4e4e7; border-bottom-color: #818cf8; }
+    .os-tab:hover { color: #a1a1aa; }
+    .os-content { display: none; }
+    .os-content.active { display: block; }
+
+    /* Steps */
+    .step {
+      display: flex; gap: 16px; margin-bottom: 24px;
+      padding: 20px; background: #111114; border: 1px solid #1e1e24;
+      border-radius: 12px;
+    }
+    .step-num {
+      flex-shrink: 0; width: 32px; height: 32px;
+      background: rgba(129,140,248,0.12); color: #818cf8;
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 15px;
+    }
+    .step-num.done { background: rgba(52,211,153,0.12); color: #34d399; }
+    .step-body { flex: 1; }
+    .step-title {
+      font-size: 15px; font-weight: 700; margin-bottom: 8px;
+    }
+    .step-desc {
+      font-size: 13px; color: #a1a1aa; margin-bottom: 10px;
+    }
+    .step-desc strong { color: #e4e4e7; }
+
+    /* Substeps */
+    .substep {
+      display: flex; gap: 10px; margin: 10px 0;
+      padding: 10px 14px; background: #0a0a0e; border: 1px solid #1a1a20;
+      border-radius: 8px; font-size: 13px; color: #a1a1aa;
+      align-items: flex-start;
+    }
+    .substep-num {
+      flex-shrink: 0; width: 22px; height: 22px;
+      background: rgba(129,140,248,0.08); color: #818cf8;
+      border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; font-weight: 700; font-size: 11px;
+    }
+    .substep-body { flex: 1; }
+    .substep-body strong { color: #e4e4e7; }
+    .substep-body .key {
+      display: inline-block; padding: 1px 8px; background: #1e1e24;
+      border-radius: 4px; font-size: 12px; font-weight: 600;
+      color: #e4e4e7; border: 1px solid #2a2a32;
+      font-family: inherit;
+    }
+
+    /* Code Block */
+    .code {
+      background: #0a0a0e; border: 1px solid #1e1e24; border-radius: 8px;
+      padding: 12px 14px; font-family: 'Consolas', 'Menlo', monospace;
+      font-size: 12.5px; color: #a1a1aa; line-height: 1.55;
+      overflow-x: auto; position: relative; margin-top: 8px;
+    }
+    .code .cm { color: #52525b; }
+    .code .hl { color: #34d399; }
+    .code .acc { color: #818cf8; }
+    .code .warn { color: #fbbf24; }
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: #1e1e24; border: none; color: #71717a;
+      padding: 3px 10px; border-radius: 5px; font-size: 11px;
+      cursor: pointer; font-family: inherit;
+    }
+    .copy-btn:hover { background: #2a2a32; color: #e4e4e7; }
+
+    /* Data grid */
+    .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+    .grid4 .item {
+      background: #111114; border: 1px solid #1e1e24; border-radius: 8px;
+      padding: 8px; text-align: center;
+    }
+    .grid4 .icon { font-size: 16px; margin-bottom: 2px; }
+    .grid4 .label { font-size: 11px; font-weight: 600; color: #34d399; }
+
+    .data-ex {
+      background: #0a0a0e; border: 1px solid #1e1e24; border-radius: 8px;
+      padding: 10px 14px; font-family: 'Consolas', monospace;
+      font-size: 11.5px; color: #71717a; line-height: 1.5;
+    }
+    .data-ex .k { color: #818cf8; }
+    .data-ex .v { color: #34d399; }
+
+    /* Alert */
+    .alert {
+      border-radius: 10px; padding: 14px 16px; margin: 12px 0;
+      font-size: 13px; line-height: 1.5;
+    }
+    .alert-green { background: rgba(52,211,153,0.08); border: 1px solid #22543d; color: #34d399; }
+    .alert-dim { background: rgba(129,140,248,0.06); border: 1px solid #1e1e24; color: #a1a1aa; }
+    .alert-yellow { background: rgba(251,191,36,0.06); border: 1px solid #854d0e; color: #fbbf24; }
+
+    /* Sources */
+    .src { font-size: 12px; color: #52525b; }
+    .src a { color: #818cf8; text-decoration: none; }
+    .src a:hover { text-decoration: underline; }
+
+    /* Expected output */
+    .expected {
+      background: #0a0a0e; border: 1px solid #1e1e24; border-radius: 8px;
+      padding: 12px 14px; font-family: 'Consolas', monospace;
+      font-size: 12px; color: #52525b; line-height: 1.6; margin-top: 8px;
+    }
+    .expected .ok { color: #34d399; }
+    .expected .val { color: #fbbf24; }
+    .expected .prompt { color: #818cf8; }
+
+    /* Visual arrow for path */
+    .path-visual {
+      background: #0d0d12; border: 1px solid #1e1e24; border-radius: 8px;
+      padding: 14px; margin: 10px 0; font-size: 13px;
+    }
+    .path-visual .folder {
+      color: #818cf8; font-weight: 600;
+    }
+    .path-visual .file {
+      color: #34d399; font-weight: 600;
+    }
+    .path-visual .arrow {
+      color: #3f3f46; margin: 0 4px;
+    }
+
+    @media (max-width: 600px) {
+      .grid4 { grid-template-columns: repeat(2, 1fr); }
+      .flow { flex-direction: column; align-items: flex-start; }
+      .flow-arr { transform: rotate(90deg); align-self: center; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>자동 리포팅 설정 가이드</h1>
+  <div class="sub">1시간마다 Claude Code 사용량이 자동 전송됩니다. 5분이면 끝.</div>
+
+  <!-- 구조 -->
+  <section>
+    <h2>작동 방식</h2>
+    <div class="flow">
+      <div class="flow-node">Claude Code 사용</div>
+      <div class="flow-arr">&rarr;</div>
+      <div class="flow-node">로컬 JSONL 자동 기록</div>
+      <div class="flow-arr">&rarr;</div>
+      <div class="flow-node">1시간마다 집계</div>
+      <div class="flow-arr">&rarr;</div>
+      <div class="flow-node hl">챌린지 사이트</div>
+    </div>
+    <div class="note">PC의 스케줄러가 로컬 파일에서 토큰 수(숫자)만 읽어 전송합니다. OAuth 토큰 불필요.</div>
+  </section>
+
+  <!-- 전송 데이터 -->
+  <section>
+    <h2>전송되는 데이터 (이게 전부)</h2>
+    <div class="grid4">
+      <div class="item"><div class="icon">🔢</div><div class="label">토큰 수</div></div>
+      <div class="item"><div class="icon">📅</div><div class="label">날짜</div></div>
+      <div class="item"><div class="icon">🏷</div><div class="label">닉네임</div></div>
+      <div class="item"><div class="icon">🔄</div><div class="label">세션 수</div></div>
+    </div>
+    <div class="data-ex">
+{ <span class="k">"nickname"</span>: <span class="v">"minjune"</span>, <span class="k">"date"</span>: <span class="v">"2026-04-08"</span>, <span class="k">"input_tokens"</span>: <span class="v">1007</span>, <span class="k">"output_tokens"</span>: <span class="v">181207</span>, <span class="k">"sessions"</span>: <span class="v">3</span> }
+    </div>
+    <div class="note" style="margin-top:4px;">대화 내용, 코드, 비밀번호, API 토큰 — 전송되지 않습니다.</div>
+  </section>
+
+  <!-- 설정 가이드 -->
+  <section>
+    <h2>설정 가이드</h2>
+
+    <div class="os-tabs">
+      <button class="os-tab active" onclick="switchOS('win')">Windows</button>
+      <button class="os-tab" onclick="switchOS('mac')">Mac / Linux</button>
+    </div>
+
+    <!-- ===== Windows ===== -->
+    <div id="os-win" class="os-content active">
+
+      <!-- Step 1: 스크립트 다운로드 -->
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">파일 2개 다운로드</div>
+          <div class="step-desc">
+            아래 <strong>두 파일을 모두</strong> 다운로드한 뒤, <strong>.claude</strong> 폴더에 넣어주세요.
+          </div>
+
+          <div style="margin:12px 0;display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="challenge-report.py" download style="display:inline-block;padding:10px 20px;background:#818cf8;color:#fff;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;">challenge-report.py</a>
+            <a href="setup-scheduler.bat" download style="display:inline-block;padding:10px 20px;background:#34d399;color:#000;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;">setup-scheduler.bat</a>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">a</div>
+            <div class="substep-body">
+              <strong>파일 탐색기</strong>를 열고, 주소창에 아래를 붙여넣기 &rarr; <span class="key">Enter</span>
+              <div class="code" style="margin-top:6px;">
+                <button class="copy-btn" onclick="copyText('%USERPROFILE%\\.claude')">복사</button>
+                %USERPROFILE%\.claude
+              </div>
+            </div>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">b</div>
+            <div class="substep-body">
+              <strong>.claude</strong> 폴더가 열리면, 다운로드한 파일 <strong>2개 모두</strong> 이 폴더에 넣어주세요.
+            </div>
+          </div>
+
+          <div class="path-visual">
+            <span class="folder">C:\Users\내이름</span>
+            <span class="arrow">&gt;</span>
+            <span class="folder">.claude</span>
+            <span class="arrow">&gt;</span>
+            <span class="file">challenge-report.py</span> + <span class="file">setup-scheduler.bat</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: 닉네임 등록 -->
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">닉네임 등록 (1회)</div>
+          <div class="step-desc">
+            챌린지 닉네임/비밀번호를 등록합니다. <strong>딱 한 번만</strong> 하면 됩니다.
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">a</div>
+            <div class="substep-body">
+              키보드에서 <span class="key">Win</span> 키를 누르고 <strong>"cmd"</strong> 입력 &rarr; <strong>명령 프롬프트</strong> 클릭
+            </div>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">b</div>
+            <div class="substep-body">
+              아래를 복사 &rarr; 붙여넣기 &rarr; <span class="key">Enter</span>
+              <div class="code" style="margin-top:6px;">
+                <button class="copy-btn" onclick="copyText('python %USERPROFILE%\\.claude\\challenge-report.py')">복사</button>
+                python %USERPROFILE%\.claude\challenge-report.py
+              </div>
+            </div>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">c</div>
+            <div class="substep-body">
+              닉네임과 비밀번호를 물어봅니다. <strong>챌린지 사이트 계정 정보</strong>를 입력하세요.
+              <div class="expected" style="margin-top:6px;">
+                <span class="prompt">=== Claude Max 챌린지 — 초기 설정 ===</span><br><br>
+                챌린지 닉네임: <span class="val">내닉네임</span><br>
+                챌린지 비밀번호: <span class="val">내비밀번호</span><br><br>
+                <span class="ok">설정 저장 완료: C:\Users\...\challenge-config.json</span><br>
+                <span class="ok">[14:30] 내닉네임 | 2026-04-08 | 50,570,055 tokens | 1 sessions | OK</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-dim">
+            여기서 입력하는 닉네임/비밀번호는 <strong>챌린지 사이트 로그인 정보</strong>입니다.<br>
+            Claude 계정 정보가 아닙니다. 내 PC에만 저장됩니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: 자동 실행 등록 -->
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">자동 실행 등록</div>
+          <div class="step-desc">
+            Step 1에서 넣어둔 <strong>setup-scheduler.bat</strong> 파일을 실행합니다.
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">a</div>
+            <div class="substep-body">
+              .claude 폴더에 있는 <strong>setup-scheduler.bat</strong> 파일을 찾아 <strong>우클릭</strong> &rarr; <strong>"관리자 권한으로 실행"</strong> 을 클릭하세요.
+            </div>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">b</div>
+            <div class="substep-body">
+              <strong>"이 앱이 변경을 허용하시겠습니까?"</strong> &rarr; <strong>"예"</strong> 클릭
+            </div>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">c</div>
+            <div class="substep-body">
+              자동으로 Python을 찾고, 스케줄러를 등록합니다. 아래처럼 나오면 <strong>성공!</strong>
+              <div class="expected" style="margin-top:6px;">
+                <span class="ok">[확인] Python 경로: C:\Users\...\python.exe</span><br>
+                <span class="ok">[확인] 스크립트: C:\Users\...\challenge-report.py</span><br>
+                <span class="ok">[진행] 1시간마다 자동 실행 등록 중...</span><br>
+                <span class="ok">[완료] 자동 실행 등록 성공!</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 완료 -->
+      <div class="step">
+        <div class="step-num done">&#10003;</div>
+        <div class="step-body">
+          <div class="step-title">끝!</div>
+          <div class="step-desc">
+            이제 Claude Code를 사용하면, <strong>매 정각</strong> 사용량이 자동으로 챌린지 사이트에 반영됩니다.<br>
+            PC를 껐다 켜도 자동 실행은 유지됩니다. 더 이상 할 일이 없습니다!
+          </div>
+          <div class="alert alert-green">
+            <strong>확인 방법:</strong> 챌린지 사이트 &rarr; 인증 탭에서 "자동 리포팅 활성" 표시가 나오면 성공!
+          </div>
+        </div>
+      </div>
+
+      <!-- 해제 방법 -->
+      <div class="alert alert-dim">
+        <strong>혹시 자동 실행을 해제하고 싶다면:</strong><br>
+        <span class="key">Win</span> &rarr; "cmd" 검색 &rarr; 명령 프롬프트 열기 &rarr; 아래 입력 후 Enter<br>
+        <code style="color:#818cf8;">schtasks /delete /tn "ClaudeChallenge" /f</code>
+      </div>
+    </div>
+
+    <!-- ===== Mac / Linux ===== -->
+    <div id="os-mac" class="os-content">
+
+      <!-- Step 1: 스크립트 다운로드 -->
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">스크립트 다운로드</div>
+          <div class="step-desc">
+            아래 버튼을 눌러 파일을 다운로드한 뒤, <strong>.claude</strong> 폴더에 넣어주세요.
+          </div>
+
+          <div style="margin:12px 0;">
+            <a href="challenge-report.py" download style="display:inline-block;padding:10px 24px;background:#818cf8;color:#fff;border-radius:8px;font-weight:700;font-size:14px;text-decoration:none;">challenge-report.py 다운로드</a>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">a</div>
+            <div class="substep-body">
+              <strong>터미널</strong>을 열고, 아래 명령어로 다운로드한 파일을 이동하세요.
+              <div class="code" style="margin-top:6px;">
+                <button class="copy-btn" onclick="copyText('mv ~/Downloads/challenge-report.py ~/.claude/challenge-report.py')">복사</button>
+                mv ~/Downloads/challenge-report.py ~/.claude/challenge-report.py
+              </div>
+            </div>
+          </div>
+
+          <div class="path-visual">
+            <span class="folder">~</span>
+            <span class="arrow">&gt;</span>
+            <span class="folder">.claude</span>
+            <span class="arrow">&gt;</span>
+            <span class="file">challenge-report.py</span>
+            &nbsp;&larr; 여기에 있으면 OK
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: 최초 실행 -->
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">최초 실행 — 닉네임 등록</div>
+          <div class="step-desc">
+            <strong>터미널</strong>에서 아래를 실행하세요. <strong>딱 한 번만</strong> 하면 됩니다.
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">a</div>
+            <div class="substep-body">
+              터미널에 아래를 복사 &rarr; 붙여넣기 &rarr; <span class="key">Enter</span>
+              <div class="code" style="margin-top:6px;">
+                <button class="copy-btn" onclick="copyText('python3 ~/.claude/challenge-report.py')">복사</button>
+                python3 ~/.claude/challenge-report.py
+              </div>
+            </div>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">b</div>
+            <div class="substep-body">
+              닉네임과 비밀번호를 물어봅니다. <strong>챌린지 사이트 계정 정보</strong>를 입력하세요.
+              <div class="expected" style="margin-top:6px;">
+                <span class="prompt">=== Claude Max 챌린지 — 초기 설정 ===</span><br><br>
+                챌린지 닉네임: <span class="val">내닉네임</span><br>
+                챌린지 비밀번호: <span class="val">내비밀번호</span><br><br>
+                <span class="ok">설정 저장 완료: /Users/.../.claude/challenge-config.json</span><br>
+                <span class="ok">[14:30] 내닉네임 | 2026-04-08 | 182,214 tokens | 3 sessions | OK</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-dim">
+            여기서 입력하는 닉네임/비밀번호는 <strong>챌린지 사이트 로그인 정보</strong>입니다.<br>
+            Claude 계정 정보가 아닙니다. 내 PC에만 저장됩니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: 자동 실행 등록 -->
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">1시간마다 자동 실행 등록</div>
+          <div class="step-desc">
+            아래 명령어를 <strong>터미널에 한 번</strong> 복사 &rarr; 붙여넣기 &rarr; Enter
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">a</div>
+            <div class="substep-body">
+              <div class="code">
+                <button class="copy-btn" onclick="copyText('(crontab -l 2>/dev/null; echo &quot;0 * * * * python3 ~/.claude/challenge-report.py&quot;) | crontab -')">복사</button>
+                (crontab -l 2>/dev/null; echo "0 * * * * python3 ~/.claude/challenge-report.py") | crontab -
+              </div>
+            </div>
+          </div>
+
+          <div class="substep">
+            <div class="substep-num">b</div>
+            <div class="substep-body">
+              등록되었는지 확인하려면:
+              <div class="code" style="margin-top:6px;">
+                <button class="copy-btn" onclick="copyText('crontab -l')">복사</button>
+                crontab -l
+              </div>
+              <div class="expected" style="margin-top:6px;">
+                <span class="ok">0 * * * * python3 ~/.claude/challenge-report.py</span>
+              </div>
+              <span style="color:#52525b;font-size:12px;">위처럼 나오면 성공!</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 완료 -->
+      <div class="step">
+        <div class="step-num done">&#10003;</div>
+        <div class="step-body">
+          <div class="step-title">끝! 설정 완료</div>
+          <div class="step-desc">
+            이제 Claude Code를 사용하면, <strong>매 정각</strong> 사용량이 자동으로 챌린지 사이트에 반영됩니다.<br>
+            더 이상 할 일이 없습니다!
+          </div>
+          <div class="alert alert-green">
+            <strong>확인 방법:</strong> 챌린지 사이트 &rarr; 인증 탭에서 "자동 리포팅 활성" 표시가 나오면 성공!
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-dim">
+        <strong>자동 실행을 해제하고 싶다면:</strong><br>
+        터미널에서 <code style="color:#818cf8;">crontab -e</code> 입력 후, 해당 줄을 삭제하고 저장
+      </div>
+    </div>
+  </section>
+
+  <!-- 근거 -->
+  <section style="margin-bottom:0;">
+    <h2>근거</h2>
+    <div class="src">
+      Anthropic 공식: <a href="https://code.claude.com/docs/ko/analytics">Analytics</a> &middot; <a href="https://code.claude.com/docs/hooks">Hooks</a> — 로컬 파일 기반 사용량 수집 공식 지원
+      &nbsp;|&nbsp;
+      업계: <a href="https://whatap.io/ko/blog/claude-code-monitoring-guide">WhaTap</a> &middot; <a href="https://insight.infograb.net/blog/2026/01/07/claudecode-monitoring/">InfoGrab</a> — 동일 구조
+    </div>
+  </section>
+
+</div>
+
+<script>
+function switchOS(os) {
+  document.querySelectorAll('.os-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.os-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('os-' + os).classList.add('active');
+}
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = 'OK!';
+    setTimeout(() => btn.textContent = '복사', 1200);
+  });
+}
+</script>
+</body>
+</html>
