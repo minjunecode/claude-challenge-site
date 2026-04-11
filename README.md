@@ -1,119 +1,22 @@
-# Claude Max 토큰 챌린지 사이트
+# ⚠️ DEPRECATED — 이 레포는 더 이상 사용되지 않습니다
 
-매주 Claude Max 할당 토큰을 전부 사용했는지 스크린샷으로 인증하는 챌린지 관리 사이트입니다.
+이 저장소는 **`claude-challenge-auto`** 로 통합되었습니다 (2026-04-11).
 
----
+## 새 위치
 
-## 세팅 가이드 (10분이면 완료)
+- **운영 레포**: https://github.com/minjunecode/claude-challenge-auto
+- **라이브 사이트**: https://minjunecode.github.io/claude-challenge-auto/#dashboard
 
-### 1단계: Google Sheets 준비
+## 마이그레이션 배경
 
-1. [Google Sheets](https://sheets.google.com)에서 **새 스프레드시트** 만들기
-2. 시트 이름은 아무거나 OK (예: "챌린지 관리")
-3. 시트 탭은 건드리지 않아도 됩니다 (초기 설정 시 자동 생성됨)
+이전에는 `claude-challenge-site`(프론트엔드)와 `claude-challenge-auto`(운영 자산) 두 레포로 분리해 운영했습니다. 그러나 두 레포의 `app.js` / `index.html` / `style.css` / `setup-guide.html` 을 매번 손으로 동기화해야 했고, 이로 인해 한쪽에만 변경이 반영되는 문제가 반복되었습니다.
 
-### 2단계: Apps Script 배포
+이 문제를 근본적으로 해결하기 위해 모든 파일을 `claude-challenge-auto` 단일 레포로 통합했습니다.
 
-1. 스프레드시트 상단 메뉴 → **확장프로그램** → **Apps Script**
-2. 기존 코드를 모두 지우고, `Code.gs` 파일의 내용을 **전체 복사해서 붙여넣기**
-3. 💾 저장 (Ctrl+S)
-4. 상단 **배포** → **새 배포**
-5. 설정:
-   - 유형: **웹 앱**
-   - 설명: 아무거나 (예: "챌린지 API")
-   - 실행 주체: **나**
-   - 액세스 권한: **모든 사용자**
-6. **배포** 클릭 → 권한 승인 → **웹 앱 URL 복사**
+## 앞으로의 작업
 
-> ⚠️ 코드를 수정한 후에는 반드시 **새 배포**를 해야 변경사항이 반영됩니다.
-> (배포 → 배포 관리 → 연필 아이콘 → 버전을 "새 버전"으로 → 배포)
+- ❌ **이 레포에 더 이상 push 하지 마세요.**
+- ✅ 모든 변경은 `claude-challenge-auto` 에서 수행하세요.
+- ✅ 라이브 대시보드 URL은 `https://minjunecode.github.io/claude-challenge-auto/#dashboard` 입니다.
 
-### 3단계: 프론트엔드 설정
-
-1. `app.js` 파일을 열어서 첫 번째 줄의 URL을 수정:
-   ```javascript
-   const API_URL = '여기에_2단계에서_복사한_URL_붙여넣기';
-   ```
-
-### 4단계: GitHub Pages 배포
-
-1. [GitHub](https://github.com)에서 **새 레포지토리** 만들기 (Public)
-2. 이 폴더의 파일들을 push:
-   ```bash
-   git init
-   git add index.html style.css app.js
-   git commit -m "챌린지 사이트 초기 배포"
-   git branch -M main
-   git remote add origin https://github.com/당신의유저명/레포이름.git
-   git push -u origin main
-   ```
-3. GitHub 레포 → **Settings** → **Pages**
-4. Source: **Deploy from a branch** → Branch: **main** → 폴더: **/ (root)** → Save
-5. 1~2분 후 `https://당신의유저명.github.io/레포이름/` 에서 접속 가능
-
-### 5단계: 초기 설정
-
-1. 배포된 사이트 접속
-2. 하단 **"최초 설정 (관리자 계정 만들기)"** 클릭
-3. 관리자 닉네임과 비밀번호 입력 → **초기 설정 실행**
-4. 이제 해당 계정으로 로그인 가능
-
-### 6단계: 멤버 등록
-
-1. 관리자 계정으로 로그인
-2. **관리자** 탭에서 멤버 닉네임/비밀번호 입력하여 추가
-
----
-
-## 사용 방법
-
-### 멤버
-1. 로그인
-2. **인증 업로드** 탭에서 스크린샷 선택 → 업로드
-3. **대시보드**에서 본인 인증 현황 확인
-
-### 관리자
-1. **대시보드**에서 전체 멤버 인증 현황 확인
-2. 셀 클릭하면 해당 스크린샷 확인 가능
-3. **관리자** 탭에서 멤버 추가/삭제
-
----
-
-## 인증 스크린샷 예시
-
-다음 중 하나를 캡처하여 업로드하세요:
-- Claude.ai의 **사용량 제한 도달 화면** (가장 확실)
-- Claude.ai 설정의 **사용량 표시 화면**
-- 주간 대화 목록 스크린샷
-
----
-
-## 파일 설명
-
-| 파일 | 설명 |
-|------|------|
-| `Code.gs` | Google Apps Script 코드 (구글 시트에 붙여넣기) |
-| `index.html` | 웹사이트 HTML |
-| `style.css` | 스타일 |
-| `app.js` | 프론트엔드 로직 |
-| `README.md` | 이 파일 |
-
----
-
-## 데이터 저장 위치
-
-- **멤버/인증 기록**: Google Sheets의 "멤버", "인증기록" 시트
-- **스크린샷 이미지**: Google Drive → "챌린지_인증스크린샷" 폴더 (자동 생성)
-
----
-
-## 문제 해결
-
-### "서버 응답 오류"가 뜹니다
-→ Apps Script 배포 URL이 올바른지 확인하세요. 코드 수정 후에는 **새 버전으로 재배포**해야 합니다.
-
-### CORS 에러가 발생합니다
-→ Apps Script 배포 시 액세스 권한이 "모든 사용자"인지 확인하세요.
-
-### 스크린샷이 보이지 않습니다
-→ Google Drive 공유 설정이 "링크가 있는 모든 사용자 보기 가능"인지 확인하세요 (Apps Script가 자동 설정하지만 간혹 실패할 수 있음).
+이 레포는 곧 archive 처리될 예정입니다.
