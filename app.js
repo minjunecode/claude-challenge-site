@@ -26,9 +26,14 @@ function getLevel(pts) { let l = LEVELS[0]; for (const x of LEVELS) { if (pts >=
 function getNextLevel(pts) { for (const x of LEVELS) { if (pts < x.min) return x; } return null; }
 
 // ── 멤버 색상 ──
-const COLOR_PRESETS = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#111111'];
+const COLOR_PRESETS = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6'];
 const DEFAULT_DOT_COLOR = '#d1d5db';
-function getMemberColor(n) { return (JSON.parse(localStorage.getItem('memberColors') || '{}'))[n] || DEFAULT_DOT_COLOR; }
+function hashNick(n) { let h = 0; for (let i = 0; i < n.length; i++) h = ((h << 5) - h + n.charCodeAt(i)) | 0; return Math.abs(h); }
+function getMemberColor(n) {
+  const custom = (JSON.parse(localStorage.getItem('memberColors') || '{}'))[n];
+  if (custom) return custom;
+  return COLOR_PRESETS[hashNick(n) % COLOR_PRESETS.length];
+}
 function setMemberColor(n, c) { const s = JSON.parse(localStorage.getItem('memberColors') || '{}'); s[n] = c; localStorage.setItem('memberColors', JSON.stringify(s)); }
 
 // ── 초기화 ──
@@ -48,22 +53,11 @@ function setupEventListeners() {
 
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
 
-  // 뷰 탭 전환
-  document.querySelectorAll('.view-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.cert-view').forEach(v => v.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(`view-${tab.dataset.view}`).classList.add('active');
-      if (tab.dataset.view === 'monthly') renderMonthlyCalendar();
-    });
-  });
-
   // 주간 네비게이션
   document.getElementById('btn-daily-prev').addEventListener('click', () => { dailyWeekOffset--; renderDashboard(); });
   document.getElementById('btn-daily-next').addEventListener('click', () => { dailyWeekOffset++; renderDashboard(); });
 
-  // 월간 네비게이션
+  // 월간 네비게이션 (내 분석 탭)
   document.getElementById('btn-month-prev').addEventListener('click', () => { monthOffset--; renderMonthlyCalendar(); });
   document.getElementById('btn-month-next').addEventListener('click', () => { monthOffset++; renderMonthlyCalendar(); });
 
@@ -194,7 +188,13 @@ async function showMain() {
   document.getElementById('user-info').textContent = currentUser.nickname + (currentUser.isAdmin ? ' (관리자)' : '');
   document.querySelectorAll('.admin-only').forEach(el => { el.style.display = currentUser.isAdmin ? '' : 'none'; });
 
-  // ② 탭 먼저 전환 (즉시 UI 표시) → API는 백그라운드
+  // ② dashboardData 캐시를 먼저 복원 (switchTab에서 stats 렌더 시 필요)
+  if (!dashboardData) {
+    const cached = localStorage.getItem('dashboardCache');
+    if (cached) { try { dashboardData = JSON.parse(cached); } catch { /* ignore */ } }
+  }
+
+  // ③ 탭 전환 (즉시 UI 표시) → API는 백그라운드
   switchTab(restoredTab);
   loadDashboard();
 }
@@ -359,6 +359,10 @@ async function loadDashboard() {
     }
     dashboardData = result;
     localStorage.setItem('dashboardCache', JSON.stringify(result));
+    // dashboardData 갱신 후 stats 탭 활성 시 피어 비교 재렌더 (members/memberHourly 필요)
+    if (personalStatsLoaded && document.getElementById('tab-stats').classList.contains('active')) {
+      renderPersonalStats();
+    }
   } else if (!dashboardData) {
     dashboardData = getDemoData();
   }
@@ -464,11 +468,20 @@ function renderDailyTable(members, submissions) {
     }
     nameTd.appendChild(dot);
     nameTd.appendChild(document.createTextNode(m.nickname));
-    if (m.hasAutoReport) {
-      const badge = document.createElement('span');
-      badge.className = 'auto-badge';
-      badge.textContent = 'auto';
-      nameTd.appendChild(badge);
+    // 오늘 500K+ 가중 스코어를 보고한 멤버에게 🔥 표시 (서버 시간 기준, 모든 사용자 동일)
+    if (dashboardData && dashboardData.memberLastActivity) {
+      const act = dashboardData.memberLastActivity[m.nickname];
+      if (act && act.score >= 500000 && act.reportedAt) {
+        const reportedDate = act.reportedAt.substring(0, 10);
+        const today = getTodayStr();
+        if (reportedDate === today) {
+          const fire = document.createElement('span');
+          fire.className = 'fire-badge';
+          fire.textContent = '🔥';
+          fire.title = `오늘 ${(act.score / 1000).toFixed(0)}K (가중)`;
+          nameTd.appendChild(fire);
+        }
+      }
     }
     tr.appendChild(nameTd);
 
@@ -547,7 +560,9 @@ function showColorPicker(dot, nickname) {
 }
 
 function renderMonthlyCalendar() {
-  if (!dashboardData || !currentUser) return;
+  if (!currentUser) return;
+  const grid = document.getElementById('calendar-grid');
+  if (!grid) return; // 내 분석 탭이 렌더링되기 전이면 종료
   const today = getTodayStr();
   const now = new Date();
   const targetDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
@@ -556,9 +571,14 @@ function renderMonthlyCalendar() {
 
   document.getElementById('month-label').textContent = `${year}년 ${month + 1}월`;
 
-  // Build a map of date -> ioTokens from usage data
+  // 데이터 소스 우선순위: personalStatsData.daily (내 분석 전용) → dashboardData.usage (fallback)
   const tokenMap = {};
-  if (dashboardData.usage) {
+  if (personalStatsData && personalStatsData.daily) {
+    personalStatsData.daily.forEach(d => {
+      const ioTokens = getScore(d);
+      if (ioTokens > 0) tokenMap[normalizeDate(d.date)] = ioTokens;
+    });
+  } else if (dashboardData && dashboardData.usage) {
     dashboardData.usage.forEach(u => {
       if (u.nickname === currentUser.nickname) {
         const ioTokens = getScore(u);
@@ -567,7 +587,6 @@ function renderMonthlyCalendar() {
     });
   }
 
-  const grid = document.getElementById('calendar-grid');
   grid.innerHTML = '';
 
   const dayHeaders = ['', '월', '화', '수', '목', '금', '토', '일'];
@@ -727,6 +746,10 @@ function renderDashboard() {
   // TOP 3 — 현재 선택된 뷰로 렌더
   const activeView = document.querySelector('.rank-toggle-btn.active')?.dataset.rank || 'points';
   renderPodium(activeView);
+
+  // 1:1 피어 비교
+  const myRaw = personalStatsData ? personalStatsData.raw : [];
+  initPeerCompare(myRaw);
 
   // 최근 활동
   const activityList = document.getElementById('activity-list');
@@ -1013,6 +1036,7 @@ function renderPersonalStats() {
   if (!personalStatsData) return;
   const { raw, daily, points } = personalStatsData;
 
+  renderMonthlyCalendar();
   renderStatsSummary(daily, points);
   renderDailyTrendChart(daily);
   renderActivityPattern(raw);
@@ -1301,6 +1325,231 @@ function renderActivityPattern(raw) {
 
   html += '</div>';
   container.innerHTML = html;
+}
+
+// ── 1:1 피어 비교 ──
+let _peerRaw = null; // initPeerCompare에서 저장, 드롭다운 클릭 시 사용
+
+function initPeerCompare(raw) {
+  const btn = document.getElementById('peer-dropdown-btn');
+  const menu = document.getElementById('peer-dropdown-menu');
+  const area = document.getElementById('peer-compare-area');
+  if (!btn || !menu || !area || !dashboardData) return;
+  _peerRaw = raw;
+
+  const myNick = currentUser ? currentUser.nickname : '';
+  const members = (dashboardData.members || []).filter(m => m.nickname !== myNick);
+  const topNick = dashboardData.topUser ? dashboardData.topUser.nickname : '';
+
+  // 메뉴 항목 생성
+  menu.innerHTML = '';
+  members.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'peer-dropdown-item';
+    item.dataset.nick = m.nickname;
+
+    // 활동 지표 뱃지
+    const act = dashboardData.memberLastActivity ? dashboardData.memberLastActivity[m.nickname] : null;
+    const isActive = act && act.score >= 500000 && act.reportedAt && (Date.now() - new Date(act.reportedAt).getTime()) <= 3600000;
+
+    let label = escapeHtml(m.nickname);
+    if (m.nickname === topNick) label += ' <span class="peer-tag peer-tag-top">주간 1위</span>';
+    if (isActive) label += ' <span class="peer-tag peer-tag-fire">🔥</span>';
+
+    item.innerHTML = label;
+    item.addEventListener('click', () => {
+      selectPeer(m.nickname);
+      closeDropdown();
+    });
+    menu.appendChild(item);
+  });
+
+  // 기본값: 주간 1위 (본인이 아니면)
+  if (topNick && topNick !== myNick) {
+    selectPeer(topNick);
+  }
+
+  // 토글
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    const dd = document.getElementById('peer-dropdown');
+    dd.classList.toggle('open');
+  };
+  // 외부 클릭 시 닫기
+  document.addEventListener('click', (e) => {
+    const dd = document.getElementById('peer-dropdown');
+    if (dd && !dd.contains(e.target)) dd.classList.remove('open');
+  });
+}
+
+function selectPeer(nick) {
+  const btnText = document.querySelector('#peer-dropdown-btn .peer-dropdown-text');
+  if (btnText) btnText.textContent = nick;
+
+  // 선택된 항목 하이라이트
+  document.querySelectorAll('.peer-dropdown-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.nick === nick);
+  });
+
+  renderPeerCompare(nick, _peerRaw);
+}
+
+function closeDropdown() {
+  const dd = document.getElementById('peer-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+function renderPeerCompare(peerNick, raw) {
+  const area = document.getElementById('peer-compare-area');
+  if (!area || !dashboardData) return;
+  const myNick = currentUser ? currentUser.nickname : '';
+  const usage = dashboardData.usage || [];
+  const today = getTodayStr();
+
+  // ── 날짜 유틸 ──
+  const now = new Date();
+  const dow = now.getDay() || 7;
+  const mon = new Date(now); mon.setDate(now.getDate() - dow + 1);
+  const monStr = `${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const d7ago = new Date(now); d7ago.setDate(now.getDate() - 6);
+  const d7str = `${d7ago.getFullYear()}-${String(d7ago.getMonth()+1).padStart(2,'0')}-${String(d7ago.getDate()).padStart(2,'0')}`;
+
+  // ── 멤버별 집계 ──
+  function aggregate(nick) {
+    const rows = usage.filter(u => u.nickname === nick);
+    let todayScore = 0, weekScore = 0, monthScore = 0, activeDays7 = 0, bestDay = 0, totalScore = 0;
+    const days7set = new Set();
+    rows.forEach(u => {
+      const d = normalizeDate(u.date);
+      const sc = getScore(u);
+      totalScore += sc;
+      if (sc > bestDay) bestDay = sc;
+      if (d === today) todayScore = sc;
+      if (d >= monStr && d <= today) weekScore += sc;
+      if (d.startsWith(curMonth)) monthScore += sc;
+      if (d >= d7str && d <= today && sc > 0) days7set.add(d);
+    });
+    activeDays7 = days7set.size;
+    return { todayScore, weekScore, monthScore, activeDays7, bestDay, totalScore };
+  }
+
+  const me = aggregate(myNick);
+  const peer = aggregate(peerNick);
+
+  // ── 지표 정의 ──
+  const metrics = [
+    { label: '오늘 사용량', myVal: me.todayScore, peerVal: peer.todayScore, fmt: formatTokens },
+    { label: '이번 주 사용량', myVal: me.weekScore, peerVal: peer.weekScore, fmt: formatTokens },
+    { label: '이번 달 사용량', myVal: me.monthScore, peerVal: peer.monthScore, fmt: formatTokens },
+    { label: '최근 7일 활동일수', myVal: me.activeDays7, peerVal: peer.activeDays7, fmt: v => v + '일' },
+    { label: '최고 일간 기록', myVal: me.bestDay, peerVal: peer.bestDay, fmt: formatTokens },
+  ];
+
+  // ── 승패 요약 ──
+  let wins = 0, losses = 0;
+  metrics.forEach(m => { if (m.myVal > m.peerVal) wins++; else if (m.myVal < m.peerVal) losses++; });
+
+  let html = '';
+
+  // 요약 배너
+  const summaryClass = wins > losses ? 'peer-summary-win' : wins < losses ? 'peer-summary-lose' : 'peer-summary-draw';
+  const summaryText = wins > losses ? `${wins}:${losses} 앞서고 있어요! 💪` : wins < losses ? `${losses}:${wins} 뒤처지고 있어요... 🔥` : `${wins}:${losses} 동률입니다`;
+  html += `<div class="peer-summary ${summaryClass}">`;
+  html += `<span class="peer-summary-label">나 vs ${escapeHtml(peerNick)}</span>`;
+  html += `<span class="peer-summary-score">${summaryText}</span>`;
+  html += `</div>`;
+
+  // 지표 카드들
+  html += '<div class="peer-metrics">';
+  metrics.forEach(m => {
+    const max = Math.max(m.myVal, m.peerVal, 1);
+    const myPct = (m.myVal / max) * 100;
+    const peerPct = (m.peerVal / max) * 100;
+    const isWin = m.myVal > m.peerVal;
+    const isLose = m.myVal < m.peerVal;
+    const statusIcon = isWin ? '🟢' : isLose ? '🔴' : '⚪';
+
+    html += `<div class="peer-metric-card">`;
+    html += `<div class="peer-metric-label">${statusIcon} ${m.label}</div>`;
+    html += `<div class="peer-metric-bars">`;
+    // 내 바
+    html += `<div class="peer-bar-row">`;
+    html += `<span class="peer-bar-nick">나</span>`;
+    html += `<div class="peer-bar-track"><div class="peer-bar-fill peer-bar-me${isWin ? ' peer-bar-winner' : ''}" style="width:${Math.max(myPct, 3)}%"></div></div>`;
+    html += `<span class="peer-bar-val${isWin ? ' peer-val-win' : ''}">${m.fmt(m.myVal)}</span>`;
+    html += `</div>`;
+    // 상대 바
+    html += `<div class="peer-bar-row">`;
+    html += `<span class="peer-bar-nick">${escapeHtml(peerNick)}</span>`;
+    html += `<div class="peer-bar-track"><div class="peer-bar-fill peer-bar-opponent${isLose ? ' peer-bar-winner' : ''}" style="width:${Math.max(peerPct, 3)}%"></div></div>`;
+    html += `<span class="peer-bar-val${isLose ? ' peer-val-lose' : ''}">${m.fmt(m.peerVal)}</span>`;
+    html += `</div>`;
+    html += `</div>`;
+    html += `</div>`;
+  });
+  html += '</div>';
+
+  // ── 시간대별 비교 차트 ──
+  const peerHourly = dashboardData.memberHourly ? dashboardData.memberHourly[peerNick] : (dashboardData.topUser && dashboardData.topUser.nickname === peerNick ? dashboardData.topUser.hourly : null);
+  let myHourly = null;
+  if (raw && raw.length > 0) {
+    const sorted = [...raw].sort((a, b) => {
+      const ad = normalizeDate(a.date), bd = normalizeDate(b.date);
+      if (ad !== bd) return bd.localeCompare(ad);
+      return (b.reportedAt || '').localeCompare(a.reportedAt || '');
+    });
+    for (const r of sorted) {
+      if (r.hourly && Array.isArray(r.hourly) && r.hourly.length > 0) { myHourly = r.hourly; break; }
+    }
+  }
+
+  function toBuckets(hourly) {
+    const arr = new Array(24).fill(0);
+    if (!hourly) return arr;
+    hourly.forEach(item => {
+      const h = item.h;
+      if (h >= 0 && h < 24) arr[h] += ((item.in||0)*1)+((item.out||0)*5)+((item.cc||0)*1.25)+((item.cr||0)*0.1);
+    });
+    return arr;
+  }
+
+  if (peerHourly || myHourly) {
+    const pBuckets = toBuckets(peerHourly);
+    const mBuckets = toBuckets(myHourly);
+    const bMax = Math.max(...pBuckets, ...mBuckets, 1);
+    const barBreaks = [10000, 50000, 100000, 500000, 1000000, 5000000, 10000000];
+    const niceMax = barBreaks.find(b => b >= bMax) || bMax;
+
+    html += '<div class="peer-metric-card" style="margin-top:4px;">';
+    html += '<div class="peer-metric-label">⏰ 시간대별 비교 (최근 보고)</div>';
+    html += '<div class="bar-chart compare-chart">';
+    for (let h = 0; h < 24; h++) {
+      const p = pBuckets[h], m = mBuckets[h];
+      const pH = p > 0 ? Math.max(Math.min((p/niceMax)*100,100), 4) : 0;
+      const mH = m > 0 ? Math.max(Math.min((m/niceMax)*100,100), 4) : 0;
+      html += `<div class="bar-col bar-col-compare" title="${h}시 — ${peerNick}: ${formatTokens(p)} / 나: ${formatTokens(m)}">`;
+      html += `<div class="bar-pair">`;
+      html += `<div class="bar-stack bar-compare-top" style="height:${pH}%"></div>`;
+      html += `<div class="bar-stack bar-compare-me" style="height:${mH}%"></div>`;
+      html += `</div>`;
+      html += `<div class="bar-label">${h}</div>`;
+      html += `</div>`;
+    }
+    html += '</div>';
+    html += '<div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px;font-size:0.65rem;color:var(--text-muted);">';
+    html += `<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(234,179,8,0.7);vertical-align:middle;margin-right:3px;"></span>${escapeHtml(peerNick)}</span>`;
+    html += '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(129,140,248,0.7);vertical-align:middle;margin-right:3px;"></span>나</span>';
+    html += '</div>';
+    html += '</div>';
+  } else {
+    html += '<div class="peer-metric-card" style="margin-top:4px;">';
+    html += '<div class="peer-metric-label">⏰ 시간대별 비교</div>';
+    html += '<div class="stats-info-msg">시간대별 데이터는 자동 리포팅 업데이트 후 수집됩니다.</div>';
+    html += '</div>';
+  }
+
+  area.innerHTML = html;
 }
 
 // ── 포인트 이력 ──
