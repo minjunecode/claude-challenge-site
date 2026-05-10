@@ -148,9 +148,30 @@ localStorage에 `dashboardCache`, `personalStatsCache` 저장. 이슈 디버깅 
 
 ---
 
-## 현재 상태 (2026-04-11 기준)
+## 현재 상태 (2026-05-10 기준)
+
+### 평가 (VC IR 시뮬레이션) 탭 — 앵커 기반 평가 시스템 (BETA)
+
+**아키텍처 3단 파이프라인** (AutoCode.gs):
+1. **Phase 0** — `extractFeatures_`: LLM이 프로젝트를 5차원 enum으로 분류 (temp 0.0)
+   - service_type / monetization / target_market / tech_complexity / validation_stage
+   - `평가` 시트의 `featuresJson` 컬럼(W, index 22)에 저장
+2. **Phase 1** — VC 6개 후속 질문 생성 (temp 0.7, 창의성)
+3. **Phase 2** — 앵커 기반 평가 (temp 0.3, 일관성)
+   - `BOOTSTRAP_ANCHORS_` (6개 정밀 캘리브레이션, 1만원~2억원 스펙트럼)
+   - 챌린지 내 같은 service_type 완료 평가 상위 3개 (자가 강화)
+   - 프롬프트가 "앵커 대비 ±X% 위치 결정" 강제, 동일 KRW 부여 금지
+
+**주요 함수**:
+- `extractFeatures_`, `getRelevantAnchors_`, `scoreFeatureSimilarity_`, `formatAnchorsForPrompt_`
+- `callAnthropic_(systemPrompt, userPrompt, maxTokens, temperature)` — 4번째 인자로 temp 제어
+
+**상수**: `BOOTSTRAP_ANCHORS_` (배열, 6개) — 신규 카테고리 등장 시 admin이 추가 가능.
+
+**Rate limit**: 주 1회 (`EVAL_WEEKLY_LIMIT_`).
 
 ### 최근 주요 변경사항
+- **앵커 기반 평가 시스템 도입** — 위 참조. 평가 휘발성 해결: 같은 프로젝트 → 비슷한 결과 (앵커 + temp 0.3), 다른 프로젝트 → 차별화된 결과 (동일 KRW 금지 규칙).
 - **50M=3pt 티어 추가** — `POINT_3_THRESHOLD = 50000000`. 주간뷰 `OOO`, 일간 차트 gold 티어, 게이지 바 50M 기준.
 - **시간대별 차트 cache 가중치 반영** — `hourly` 데이터에 `cc`/`cr` 필드 추가. 4개 컴포넌트 스택 바 (`I×1 + O×5 + Cw×1.25 + Cr×0.1`).
 - **`challenge-report.py` 업데이트** — Python 리포터가 hourly에 `cc`/`cr` 전송하도록 수정.

@@ -558,6 +558,18 @@
         <strong>자동 실행을 해제하고 싶다면:</strong><br>
         터미널에서 <code style="color:#818cf8;">crontab -e</code> 입력 후, 해당 줄을 삭제하고 저장
       </div>
+
+      <div class="alert alert-yellow">
+        <strong>⚠️ macOS에서 SSL CERTIFICATE_VERIFY_FAILED 에러가 난다면</strong><br>
+        <span style="color:#a1a1aa;">로그에 <code>[SSL: CERTIFICATE_VERIFY_FAILED] unable to get local issuer certificate</code> 가 보이는 경우, python.org 설치판 Python에 루트 인증서가 등록되지 않은 상태입니다. 아래 한 줄을 터미널에서 한 번만 실행하면 해결됩니다.</span>
+        <div class="code" style="margin-top:8px;">
+          <button class="copy-btn" onclick="copyText('/Applications/Python\\ 3.13/Install\\ Certificates.command')">복사</button>
+          /Applications/Python\ 3.13/Install\ Certificates.command
+        </div>
+        <div style="color:#52525b;font-size:12px;margin-top:6px;">
+          Python 버전이 다르면 <code>3.13</code> 부분만 본인 버전으로 바꾸세요 (예: <code>3.12</code>). Finder에서 <strong>응용 프로그램 &rarr; Python 3.x &rarr; Install Certificates.command</strong> 더블클릭해도 동일합니다.
+        </div>
+      </div>
     </div>
   </section>
 
